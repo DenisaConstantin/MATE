@@ -12,7 +12,6 @@ By mapping these junction segments back to a reference genome, MATE categorizes 
 
 ## 🛠️ Dependencies
 Ensure the following tools are installed and available in your system's `$PATH`:
-* `bash` & `awk`
 * `blast+` (specifically `blastn`)
 * `seqkit`
 
