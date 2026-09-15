@@ -16,7 +16,7 @@ Ensure the following tools are installed and available in your system's `$PATH`:
 * `blast+` (specifically `blastn`)
 * `seqkit`
 
-* ## 💻 Usage
+## 💻 Usage
 The main execution script is `mate.sh`. It requires paths to your genotype assembly, reference genome, TE sequences, and a coordinate file.
 
 ./mate.sh -genotype <assembly.fasta> \
