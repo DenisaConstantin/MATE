@@ -4,18 +4,18 @@
 
 The pipeline runs TE queries against *de novo* assemblies via `BLASTN`. It unifies adjacent signals originating from the same insertion and extracts the insertion along with variable-sized genomic flanking sequences (up to 3000 bp upstream and downstream). 
 
-## ⚙️ How It Works
+## How It Works
 By mapping these junction segments back to a reference genome, MATE categorizes the insertions into three main groups:
 1. **Genotype-Specific Insertions:** Putative *de novo* or genotype-specific TEs present only in the target assembly (absent in the reference).
 2. **Conserved and Annotated Insertions:** TEs present in both the target and the reference genome, matching existing TE annotations.
 3. **Conserved but Unannotated Insertions:** TEs present in both genomes but lacking prior annotation in the reference database.
 
-## 🛠️ Dependencies
+## Dependencies
 Ensure the following tools are installed and available in your system's `$PATH`:
 * `blast+` (specifically `blastn`)
 * `seqkit`
 
-## 💻 Usage
+## Usage
 The main execution script is `mate.sh`. It requires paths to your genotype assembly, reference genome, TE sequences, and a coordinate file.
 
 ./mate.sh -genotype <assembly.fasta> \
@@ -30,3 +30,6 @@ The main execution script is `mate.sh`. It requires paths to your genotype assem
 * `-te`: A FASTA file containing the sequences of the Transposable Elements of interest.
 * `-te_coord`: A tab-separated reference file containing TE coordinates/annotations.
 * `-out`: Name of the directory where results will be saved.
+
+## Disclaimer
+Google Gemini was used to assist with script optimization.
