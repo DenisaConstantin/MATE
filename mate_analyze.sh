@@ -3,23 +3,19 @@
 INPUT="unified_unannotated_conserved_insertions.tsv"
 OUTPUT="unannotated_conserved_insertions.csv"
 MARGIN=20
-MIN_LEN=300  # Pragul minim de 300 nt pentru lungimea insertiei
+MIN_LEN=300 
 
-#Header pentru fisierul final
 echo -e "Coloane_Originale...\tDistanta_Scaffold\tTip_Insertie" > "$OUTPUT"
 
-#Sortare: 1.Cromozom, 2.Start_Ref, 3.Scaffold, 4.Start_Query
 sort -k2,2 -k16,16n -k1,1 -k14,14n "$INPUT" | awk -v m="$MARGIN" -v min_l="$MIN_LEN" '
 function abs(x) { return (x < 0) ? -x : x }
 
-#Extrage numele scaffold-ului (ex: din tig00001889:+)
 function get_scaffold(id_str) {
     sub(/:[+-]$/, "", id_str)
     sub(/_[0-9]+-[0-9]+$/, "", id_str)
     return id_str
 }
 
-#Extrage catena (+ sau -)
 function get_strand(id_str) {
     n = split(id_str, a, ":")
     return a[n]
@@ -31,7 +27,7 @@ BEGIN {
 }
 
 {
-    #Logica de grupare (daca e aceeasi regiune in referinta)
+
     if (NR == 1 || $2 != last_chrom || abs($16 - last_ref_start) > m || abs($17 - last_ref_end) > m) {
         if (NR > 1) process_group()
         
@@ -53,8 +49,7 @@ END {
 }
 
 function process_group() {
-    #Filtrare: calculam lungimea pe referinta
-    #len = abs(last_ref_end - last_ref_start)
+    
      len = abs(q_ends[1] - q_starts[1])
     if (len < min_l) return;
 
@@ -63,7 +58,7 @@ function process_group() {
         return
     }
 
-    #1. Rezolvarea redundantei: alegem scaffold-ul cu aliniamentul cel mai lung
+  
     best_idx = 1
     max_len = abs(q_ends[1] - q_starts[1])
     
@@ -76,7 +71,7 @@ function process_group() {
     }
     best_scaff = get_scaffold(ids[best_idx])
 
-    #2. Filtram doar insertiile care apartin scaffold-ului "castigator"
+   
     new_count = 0
     for (i = 1; i <= count; i++) {
         if (get_scaffold(ids[i]) == best_scaff) {
@@ -88,7 +83,7 @@ function process_group() {
         }
     }
 
-    #3. Clasificarea finala a grupului curatat
+ 
     if (new_count == 1) {
         print f_lines[1], "N/A", "Unique_Insertion_Resolved"
         return
