@@ -1,10 +1,6 @@
-#./script_cartare_transpozoni_blast.sh reference.fasta assembly.fasta
-#$1 reference genome
-#$2 assemnly.fasta
-#Imparte in functie de contig.
+
 awk -F "\t" '{print > $2".ctg.csv"}' *.te.csv
 
-#Script pentru eliminare IR-uri redundante. Se numeste eliminare_ir_redundante.sh
 DIST=50
 
 for file in *.ctg.csv; do
@@ -26,23 +22,19 @@ for file in *.ctg.csv; do
             for (j = 1; j <= NR; j++) {
                 if (i == j) continue
 
-                # Coordonate normalizate
                 smin_i = min(sstart[i], send[i])
                 smax_i = max(sstart[i], send[i])
                 smin_j = min(sstart[j], send[j])
                 smax_j = max(sstart[j], send[j])
 
-                # Capăt dreapta
                 if (smax_i == smin_j && abs(smin_i - smax_j) <= DIST) {
                     if (score[i] < score[j]) keep[i] = 0
                 }
 
-                # Capăt stânga
                 if (smin_i == smax_j && abs(smax_i - smin_j) <= DIST) {
                     if (score[i] < score[j]) keep[i] = 0
                 }
 
-                # Inclus complet
                 if (smin_i >= smin_j && smax_i <= smax_j && score[i] < score[j]) {
                     keep[i] = 0
                 }
@@ -54,7 +46,6 @@ for file in *.ctg.csv; do
     ' "$file" > "${file%.csv}_filtered.csv"
 done
 
-#Unire daca sunt gaps in transpozoni
 for f in *_filtered.csv; do
   awk '
   BEGIN { OFS="\t" }
@@ -76,11 +67,9 @@ for f in *_filtered.csv; do
       for (j = 1; j <= NR; j++) {
         if (i == j || (j in processed)) continue
 
-        # Criteriu de unire: send[i] == sstart[j]
         if (query[i] == query[j] && contig[i] == contig[j] &&
             send[i] == sstart[j]) {
 
-          # verificare sens
           if ((sstart[i] < send[i]) && (sstart[j] < send[j])) {
             # sens crescător
             min_q = (qstart[i] < qstart[j]) ? qstart[i] : qstart[j]
@@ -88,7 +77,7 @@ for f in *_filtered.csv; do
             min_s = (sstart[i] < sstart[j]) ? sstart[i] : sstart[j]
             max_s = (send[i] > send[j]) ? send[i] : send[j]
           } else if ((sstart[i] > send[i]) && (sstart[j] > send[j])) {
-            # sens descrescător
+          
             min_q = (qstart[i] < qstart[j]) ? qstart[i] : qstart[j]
             max_q = (qend[i] > qend[j]) ? qend[i] : qend[j]
             max_s = (sstart[i] > sstart[j]) ? sstart[i] : sstart[j]
@@ -117,7 +106,6 @@ for f in *_filtered.csv; do
 done
 rm *.ctg.csv *_filtered.csv
 
-#Construiesc fisierul cu coordonate
 for i in *_merged.csv; do
   > "$i.ins.csv"
   while IFS=$'\t' read -r te tig _ _ _ _ qstart qend sstart send _ _; do
@@ -149,13 +137,11 @@ then
 startfl=1
 if ! [ $start -le 3000 ]
 then
-#Ai grija cand pui variabila. Aici ai 1 in plus pentru ca seqtk subseq --bed incepe numaratoarea de la 0, astfel daca ii mentionez sa extraga de la nucleotide 2 la nucleotida 10, va extrage de la 3.
 startfl=$( expr $start - 3001 ) 
 fi
 endfl=$( expr $end + 3000 )
-#Coord insertiei initial identificate sunt despartite de +/- in functie de catena pentru ca fisierul bed trebuie sa aiba in coloana 6 informatii referitoare la catena. Ordine coloane: contig, coord start flanking, coord end flanking, lungime insertie, coord start insertie, catena, coord end insertie.
         echo -e "$tig\t$startfl\t$endfl\t$ins\t$start\t"+"\t$end" >> plus.bed
-#Catena minus
+
 elif [ $strand = - ]
 then 
 startfl=1
@@ -168,7 +154,7 @@ endfl=$( expr $end + 3000 )
 fi
 done < output_ins.txt
 
-#Extragere secvente genomic+transozon.
+
 seqkit subseq --bed plus.bed $2 > secv_plus.fasta
 seqkit subseq --bed minus.bed $2 > secv_minus.fasta
 
@@ -180,7 +166,7 @@ do
     output_dir="output_${i%_blast.csv}"
     mkdir -p "$output_dir"
     
-    #Imparte rezultatele in functie de query
+  
     while IFS= read -r line; do
         if [[ $line == \#\ Query:* ]]; then
             #query_name=$(echo "$line" | sed 's/# Query: //; s/[^a-zA-Z0-9._-]/_/g')
@@ -192,7 +178,7 @@ do
         fi
     done < "$i"
 done
-##############################Adaugat azi 22 Iulie 2025
+
 cat plus.bed minus.bed > all.csv
 sed -i 's/\t/ /g' all.csv
 awk '{
@@ -203,46 +189,46 @@ awk '{
     print
 }' all.csv > all_ins.csv
 rm all.csv
-##############################Adaugat azi 22 Iulie 2025
+
 current_dir=$(pwd)
 
 for dirname in ./*/
 do
   cd "$dirname" || continue
-  #echo "Procesare în: $dirname"
+
 
 for f in *.txt; do echo ${f%.txt} >> insertii; sed -i 's/\t/ /g' $f; awk 'NR > 4 {print $0}' $f > ${f%.txt}".int.txt"; done
 
-#Adaug o coloana cu lungimea subsecventei extrase.
+
 for i in *.int.txt; do awk 'BEGIN{OFS=" "} {match($1, /([0-9]+)-([0-9]+)/, a); diff = a[2] -a[1]; print $0, diff}' $i > ${i%.int.txt}".csv"; done
 rm -r *.txt
 
 for i in *.csv
 do
-#Creeaza un fisier temporar
+
 tmp=$(mktemp)
-#Scrie rezultatul in fisierul temporar
+
 awk 'BEGIN{OFS=" "} NR==1 && ($7 <= 2500) && ($8 >= ($13 - 2500))' $i > $tmp
 
-#Daca exista fisiere temporare le concatenam
+
 if [[ -s $tmp ]]
 then
 cat $tmp >> insertii_conservate_rezultate.csv
 else
-#Daca nu exista rezultate, atunci scrie numele fisierului in alt fisier
+
 echo $i >> fisiere_fara_rezultate.txt
 fi
 rm $tmp
 done
 
-#pastrez file-urile pentru care suspectez insertii specifice
+
 mkdir insertii_specifice/
 while read file; do   cp $file insertii_specifice/; done < fisiere_fara_rezultate.txt
 rm fisiere_fara_rezultate.txt
-#script insertii specifice
+
 cd insertii_specifice/
 for file in *.csv; do
-#defineste functia abs pentru utilizarea ulterioara
+
   awk '
   function abs(x) { return x < 0 ? -x : x }
 
@@ -257,23 +243,23 @@ for file in *.csv; do
   }
 
   END {
-#Luam prima linie ca referinta   
+ 
     i = 1
-#Calculam presupusa insertie cu FL=3000   
+
     ins_len = qlen[i] - 6000  
-#Verificam daca linia 1 este in amonte sau aval de insertie
+
     is_i_amonte = (qend[i] <= 3005)
     is_i_aval = (qstart[i] >= 3005)
     
-#Parcurgem restul liniilor
+
     for (j = 2; j <= NR; j++) {
-#Mergem inainte doar daca cromozomul este acelasi
+
       if (chrom[i] != chrom[j]) continue
 
       is_j_amonte = (qend[j] <= 3005)
       is_j_aval = (qstart[j] >= 3005)
 
-      # caz 1: i amonte, j aval
+     
       if (is_i_amonte && is_j_aval &&
           qstart[j] - qend[i] >= ins_len - 20 &&
           qstar[j] - qend[i] <= ins_len + 20 ) {
@@ -287,7 +273,7 @@ for file in *.csv; do
         }
       }
 
-      # caz 2: i aval, j amonte
+   
       if (is_i_aval && is_j_amonte &&
           qstart[i] - qend[j] >= ins_len - 20 &&
           qstart[i] - qend[j] <= ins_len + 20) {
@@ -307,15 +293,13 @@ done
 cat pereche* > insertii_specifice_rezultate.tsv
 rm -r pereche*
 
-#Raman cu cateva insertii pe care nu le pot clasica. Le obtin printr-o comparatie
 
-#Insertii identificate ca fiind specifice
 while read name _ _ _ _ _ _ _ _ _ _ _ _; do id=${name%%:*}; echo $id; done < insertii_specifice_rezultate.tsv > lista_insertii.txt
 
-#Numele fisierelor
+
 for i in *.csv; do echo ${i%.csv}; done > lista_fisiere.txt
 
-#Comparatie intre cele doua fisiere
+
 grep -Fvxf lista_insertii.txt lista_fisiere.txt > fara_informatii.txt
 
 rm -r lista_insertii.txt lista_fisiere.txt
@@ -323,7 +307,7 @@ mkdir insertii_meh/
 while read id; do cp ${id}*.csv insertii_meh/; done < fara_informatii.txt 
 
 cd insertii_meh/
-#Insertii conservate identificate cu un singur fl
+
 for file in *.csv; do
   awk '
   NR == 1 {
@@ -357,11 +341,11 @@ done
 cat fl_* > insertii_conservate_un_fl_rezultate.csv
 rm fl_* 
  
-#Insertii conservate identificate din 2 hits
+
 MAX_GAP=50
 output="insertii_conservate_2hits_rezultate.csv"
 
-#Golim fisierul la inceput
+
 > "$output"
 
 for i in *.csv
@@ -417,20 +401,20 @@ for f in *.tsv; do
     mv "$f" "${f%.tsv}.csv"
 done
 awk -F ':' '{print $1}' *.csv | sort -u > identificate.txt
-#insertii.txt este lista completa cu rezultatele blast. Obtinem lista cu fisierele pentru care nu am putut identifica timpul de insertie
+
 grep -Fvxf identificate.txt insertii > fara_informatii.txt
 
-##############Adaugat azi 22 Iulie 2025
+
 cp ../../all_ins.csv all_ins.csv
 
-#Am creat cate un folder pentru fiecare fisier.
+
 for f in insertii*.csv ; do mkdir ${f%.csv}; done
 
-#Am copiat fisierele in foldere dupa nume.
+
 for f in *.csv; do dirname=${f%.csv}; if [ -d $dirname ]; then cp $f $dirname/; fi; done
 ##############################################################################################
 cd insertii_conservate_rezultate/
-#Adaug coordonatele din contigs, unde a fost identficata insertia initial.
+
 awk '
 FNR==NR {
   key = $1 "_" $2+1 "-" $3 ":" $6
@@ -443,7 +427,7 @@ FNR==NR {
 }
 ' ../all_ins.csv insertii_conservate_rezultate.csv > insertii_conservate.csv
 
-#Prima coordonata
+
 awk '{
     coord_ins = "NA"
     if ($13 < 6000 && $1 ~ /_2-/ && $9 > $10) {
@@ -462,7 +446,7 @@ awk '{
     print $0, coord_ins
 }' insertii_conservate.csv > insertii_conservate_coord1.csv
 
-#A doua coordonata
+
 awk '{
 
     coord_fin = "NA"
@@ -479,13 +463,13 @@ awk '{
 }' insertii_conservate_coord1.csv > insertii_conservate_coord.csv
 
 rm insertii_conservate_coord1.csv
-#../../../mate_associate.sh insertii_conservate_coord.csv ../../../te_name_coord.txt | sort -u > adnotari_conservate.txt
+
 bash "$MATE_HOME/mate_associate.sh" insertii_conservate_coord.csv "$3" | sort -u > adnotari_conservate.txt
 awk -F'\t' '{ids[$1]=1} END {for (id in ids) print id}' adnotari_conservate.txt > id_adnotari.txt
 awk 'NR==FNR {id[$1]; next} !($1 in id)' id_adnotari.txt insertii_conservate_coord.csv > ins_conservate_neadnotate.txt
 ##############################################################################################
 cd ../insertii_conservate_2hits_rezultate
-#Adaug coordonatele din contigs, unde a fost identficata insertia initial.
+
 awk '
 FNR==NR {
   key = $1 "_" $2+1 "-" $3 ":" $6
@@ -498,7 +482,7 @@ FNR==NR {
 }
 ' ../all_ins.csv insertii_conservate_2hits_rezultate.csv > insertii_conservate_2hits.csv
 
-#Prima coord 
+
 awk '($7 < 3000) && ($8 > (3000 + (($14 > $15) ? $14 - $15 : $15 - $14))) {
     offset = 3000 - $7;
     if ($9 < $10) {
@@ -509,7 +493,7 @@ awk '($7 < 3000) && ($8 > (3000 + (($14 > $15) ? $14 - $15 : $15 - $14))) {
     print $0, coord_ins;
 }' insertii_conservate_2hits.csv > insertii_conservate_2hits_coord1.csv
 
-#A doua coordonata
+
 awk '{
 
     coord_fin = "NA"
@@ -526,14 +510,14 @@ awk '{
 }' insertii_conservate_2hits_coord1.csv > insertii_conservate_2hits_coord.csv
 rm insertii_conservate_2hits_coord1.csv
 
-#../../../mate_associate.sh insertii_conservate_2hits_coord.csv ../../../te_name_coord.txt | sort -u > adnotari_2hits.txt
+
 bash "$MATE_HOME/mate_associate.sh" insertii_conservate_2hits_coord.csv "$3" | sort -u > adnotari_conservate.txt
 awk -F'\t' '{ids[$1]=1} END {for (id in ids) print id}' adnotari_2hits.txt > id_adnotari.txt
 awk 'NR==FNR {id[$1]; next} !($1 in id)' id_adnotari.txt insertii_conservate_2hits_coord.csv > ins_conservate_2hits_neadnotate.txt
 
 ##############################################################################################
 cd ../insertii_conservate_un_fl_rezultate
-#Adaug coordonatele din contigs, unde a fost identficata insertia initial.
+
 awk '
 FNR==NR {
   key = $1 "_" $2+1 "-" $3 ":" $6
@@ -546,7 +530,7 @@ FNR==NR {
 }
 ' ../all_ins.csv insertii_conservate_un_fl_rezultate.csv > insertii_conservate_fl.csv
 
-#Prima coord de insertie
+
 awk '{
     coord_ins = "NA"
     if ($13 < 6000 && $1 ~ /_2-/ && $9 > $10) {
@@ -565,7 +549,7 @@ awk '{
     print $0, coord_ins
 }' insertii_conservate_fl.csv > insertii_conservate_fl_coord1.csv
 
-#A doua coordonata de insertie
+
 awk '{
 coord_fin = "NA"
 if ($9 < $10 ) {
@@ -577,15 +561,14 @@ print $0, coord_fin
 }' insertii_conservate_fl_coord1.csv > insertii_conservate_fl_coord.csv
 rm insertii_conservate_fl_coord1.csv
 
-#../../../mate_associate.sh insertii_conservate_fl_coord.csv ../../../te_name_coord.txt | sort -u > adnotari_fl.txt
+
 bash "$MATE_HOME/mate_associate.sh" insertii_conservate_fl_coord.csv "$3" | sort -u > adnotari_conservate.txt
 awk -F'\t' '{ids[$1]=1} END {for (id in ids) print id}' adnotari_fl.txt > id_adnotari.txt
 awk 'NR==FNR {id[$1]; next} !($1 in id)' id_adnotari.txt insertii_conservate_fl_coord.csv > ins_conservate_fl_neadnotate.txt
 
-#########################Adaugat azi 22 Iulie 2025
-#########################Adaugat 29 Iulie 2025
+
 cd ../insertii_specifice_rezultate
-#Colectare coordonate de insertie
+
 awk '{ 
   if ($8 <= 3005)
     print $1, $2, $10;
@@ -593,7 +576,7 @@ awk '{
     print $1, $2, $9;
 }' insertii_specifice_rezultate.csv > coordonate_ins.csv
 
-#Le ordonez pe aceeasi linie
+
 awk '{ 
   key = $1
   if (!(key in a)) {
@@ -609,7 +592,7 @@ END {
   }
 }' coordonate_ins.csv > coord_insertii.csv
 rm coordonate_ins.csv
-#########################Adaugat 29 Iulie 2025
+
 cd $current_dir
 done
 
@@ -635,7 +618,7 @@ sed -i 's/ /,/g' specific_insertions.csv
 cd ../
 find . -type f -name adnotari_* -exec cat {} + > results/annotated_conserved_ins.csv
 cd results/
-#elimin duplicate
+
 awk '
 {
     split($1, a, /_|[:-]/)
@@ -654,6 +637,6 @@ sed -i 's/\t/,/g' annotated_conserved_insertions.csv
 
 cd ../
 find . -type f -name *_neadnotate.txt -exec cat {} + > results/unannotated_conserved_ins.csv
-#elimina duplicate
+
 rm -r output* all_ins.csv *.bed *_blast.csv secv*
 
